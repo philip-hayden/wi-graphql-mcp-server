@@ -11,6 +11,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Use Node.js 20.x
       uses: actions/setup-node@v4
@@ -27,6 +29,27 @@ jobs:
 
     - name: Build project
       run: npm run build
+
+    - name: Get current version
+      id: version
+      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+    - name: Increment patch version
+      run: |
+        current_version="${{ steps.version.outputs.version }}"
+        IFS='.' read -r major minor patch <<< "$current_version"
+        new_patch=$((patch + 1))
+        new_version="$major.$minor.$new_patch"
+        echo "New version: $new_version"
+        echo "new_version=$new_version" >> $GITHUB_ENV
+        npm version $new_version --no-git-tag-version
+
+    - name: Commit version bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add package.json package-lock.json
+        git commit -m "Bump version to $new_version [skip ci]"
 
     - name: Publish to NPM
       run: npm publish

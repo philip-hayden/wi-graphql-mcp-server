@@ -25,13 +25,28 @@ export class WiClient {
 
   async exec<T = any>(query: string, variables: any = {}, operationName?: string, perCallToken?: string): Promise<T> {
     try {
+      // Log the GraphQL request for debugging
+      console.log(`[WiClient] Executing ${operationName || 'unnamed'} operation`);
+      console.log(`[WiClient] Query: ${query.substring(0, 100)}${query.length > 100 ? '...' : ''}`);
+      console.log(`[WiClient] Variables:`, JSON.stringify(variables, null, 2));
+
       const headers = perCallToken ? { Authorization: `Bearer ${perCallToken}` } : undefined;
-      return await this.client.request<T>(query, variables, { ...(headers ?? {}), "x-operation-name": operationName ?? "" });
+      const result = await this.client.request<T>(query, variables, { ...(headers ?? {}), "x-operation-name": operationName ?? "" });
+
+      // Log successful response
+      console.log(`[WiClient] ${operationName || 'Operation'} completed successfully`);
+      console.log(`[WiClient] Response keys:`, Object.keys(result || {}));
+
+      return result;
     } catch (err) {
       if (err instanceof ClientError) {
         const { response } = err;
+        console.error(`[WiClient] GraphQL error for ${operationName || 'operation'}:`);
+        console.error(`[WiClient] Status: ${response.status}`);
+        console.error(`[WiClient] Errors:`, JSON.stringify(response.errors, null, 2));
         throw new Error(`GraphQL error: ${response.status} ${JSON.stringify(response.errors ?? [])}`);
       }
+      console.error(`[WiClient] Unexpected error for ${operationName || 'operation'}:`, err);
       throw err;
     }
   }

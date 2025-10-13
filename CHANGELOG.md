@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-01-13
+
+### Fixed
+- **GitHub Actions Release Workflow**: Fixed version increment issue that was preventing NPM publishing
+- **Version Management**: Automated patch version bumping in release workflow
+
 ## [0.2.1] - 2025-01-12
 
 ### Added

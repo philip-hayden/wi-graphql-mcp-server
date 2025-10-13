@@ -1973,7 +1973,7 @@ async function main() {
       description: "Mark an upload session as finished",
       inputSchema: {
         uploadId: z.string(),
-        status: z.enum(["UPLOAD_FINISHED", "PROCESSING", "COMPLETED"]).default("UPLOAD_FINISHED"),
+        status: z.enum(["UPLOAD_FINISHED", "PROCESSING", "FINISHED"]).default("UPLOAD_FINISHED"),
         bearerToken: z.string().optional(),
       } as ZodRawShape,
     },
@@ -2017,26 +2017,241 @@ async function main() {
   );
 
   server.registerTool(
-    "uploadImageWorkflow",
+    "validateDeploymentForUpload",
     {
-      title: "Complete Image Upload Workflow",
-      description: "Streamlined workflow for uploading camera trap images",
+      title: "Validate Deployment for Upload",
+      description: "Check if a deployment is properly configured for image uploads",
       inputSchema: {
         projectId: z.string(),
-        deploymentId: z.string(),
-        fileName: z.string(),
-        fileSize: z.string(),
-        contentType: z.string().default("image/jpeg"),
+        deploymentId: z.string().optional(),
         bearerToken: z.string().optional(),
       } as ZodRawShape,
     },
     async (args: { [key: string]: any }) => {
       try {
-        const { projectId, deploymentId, fileName, fileSize, contentType, bearerToken } = args;
+        const { projectId, deploymentId, bearerToken } = args;
 
-        // Step 1: Create upload session
+        if (!deploymentId) {
+          // Get all deployments for the project
+          const deploymentsData = await wi.exec(`
+            query getDeploymentsByProject($projectId: Int!) {
+              getDeploymentsByProject(projectId: $projectId, pagination: { pageSize: 100 }) {
+                data {
+                  id
+                  deploymentName
+                  startDatetime
+                  endDatetime
+                  locationId
+                  location {
+                    id
+                    placename
+                  }
+                }
+              }
+            }
+          `, { projectId: parseInt(projectId) }, "getDeploymentsByProject", bearerToken);
+
+          const deployments = deploymentsData.getDeploymentsByProject?.data || [];
+          const validDeployments = deployments.filter((d: any) => d.startDatetime && d.endDatetime && d.locationId);
+
+          return {
+            content: [
+              { type: "text", text: `Found ${deployments.length} deployment(s). ${validDeployments.length} ready for uploads.` },
+              { type: "resource", resource: {
+                text: JSON.stringify({
+                  allDeployments: deployments,
+                  validDeployments: validDeployments,
+                  invalidDeployments: deployments.filter((d: any) => !d.startDatetime || !d.endDatetime || !d.locationId)
+                }, null, 2),
+                uri: "deployment-validation.json"
+              }}
+            ]
+          };
+        }
+
+        // Check specific deployment
+        const deploymentData = await wi.exec(`
+          query getDeployment($deploymentId: Int!) {
+            getDeployment(deploymentId: $deploymentId) {
+              id
+              deploymentName
+              startDatetime
+              endDatetime
+              locationId
+              location {
+                id
+                placename
+                latitude
+                longitude
+              }
+            }
+          }
+        `, { deploymentId: parseInt(deploymentId) }, "getDeployment", bearerToken);
+
+        const deployment = deploymentData.getDeployment;
+        const issues = [];
+
+        if (!deployment.startDatetime) issues.push("Missing start date");
+        if (!deployment.endDatetime) issues.push("Missing end date");
+        if (!deployment.locationId) issues.push("Missing location");
+
+        const isValid = issues.length === 0;
+
+        return {
+          content: [
+            { type: "text", text: `Deployment "${deployment.deploymentName}" is ${isValid ? 'VALID' : 'INVALID'} for uploads. ${issues.length > 0 ? `Issues: ${issues.join(', ')}` : 'Ready for uploads!'}` },
+            { type: "resource", resource: {
+              text: JSON.stringify({
+                deployment: deployment,
+                isValidForUpload: isValid,
+                issues: issues,
+                nextSteps: isValid ? ["Use uploadImageWorkflow tool"] : ["Configure deployment in Wildlife Insights web interface", "Set start/end dates", "Add location information"]
+              }, null, 2),
+              uri: "deployment-status.json"
+            }}
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error validating deployment: ${error}` }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "validateFileForUpload",
+    {
+      title: "Validate File for Upload",
+      description: "Check if a file can be uploaded by validating against existing files",
+      inputSchema: {
+        projectId: z.string(),
+        deploymentId: z.string(),
+        fileName: z.string(),
+        fileSize: z.string(),
+        bearerToken: z.string().optional(),
+      } as ZodRawShape,
+    },
+    async (args: { [key: string]: any }) => {
+      try {
+        const { projectId, deploymentId, fileName, fileSize, bearerToken } = args;
+
+        // Format filename with size like browser does: "filename.jpg||12345"
+        const formattedFileName = `${fileName}||${fileSize}`;
+
+        const variables = {
+          projectId: parseInt(projectId),
+          deploymentId: parseInt(deploymentId),
+          fileNameList: [formattedFileName]
+        };
+
+        const data = await wi.exec(`
+          query getDataFilesByFileNameAndSize($projectId: Int!, $deploymentId: Int!, $fileNameList: [String]!) {
+            getDataFilesByFileNameAndSize(
+              projectId: $projectId,
+              deploymentId: $deploymentId,
+              fileNameList: $fileNameList
+            ) {
+              exists
+            }
+          }
+        `, variables, "getDataFilesByFileNameAndSize", bearerToken);
+
+        const fileExists = data.getDataFilesByFileNameAndSize?.exists?.[0] || false;
+
+        return {
+          content: [
+            { type: "text", text: `File validation for ${fileName}: ${fileExists ? 'EXISTS' : 'NEW FILE'}` },
+            { type: "resource", resource: {
+              text: JSON.stringify({
+                fileName: fileName,
+                fileSize: fileSize,
+                formattedFileName: formattedFileName,
+                exists: fileExists,
+                canUpload: !fileExists,
+                nextSteps: fileExists ?
+                  ["File already exists - consider renaming or check if re-upload is needed"] :
+                  ["File is new and can be uploaded", "Use uploadImageWorkflow to proceed with upload"]
+              }, null, 2),
+              uri: "file-validation.json"
+            }}
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error validating file: ${error}` }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "uploadImageFile",
+    {
+      title: "Upload Image File to Wildlife Insights",
+      description: "Upload a local image file directly to Wildlife Insights (handles the complete workflow)",
+      inputSchema: {
+        projectId: z.string(),
+        deploymentId: z.string(),
+        localFilePath: z.string(),
+        contentType: z.string().default("image/jpeg"),
+        validateFile: z.boolean().default(true),
+        bearerToken: z.string().optional(),
+      } as ZodRawShape,
+    },
+    async (args: { [key: string]: any }) => {
+      try {
+        const { projectId, deploymentId, localFilePath, contentType, validateFile, bearerToken } = args;
+
+        // Step 1: Get file info
+        const fs = await import('fs');
+        const path = await import('path');
+
+        if (!fs.existsSync(localFilePath)) {
+          return {
+            content: [{ type: "text", text: `❌ File not found: ${localFilePath}` }]
+          };
+        }
+
+        const fileStats = fs.statSync(localFilePath);
+        const fileSize = fileStats.size.toString();
+        const fileName = path.basename(localFilePath);
+
+        console.log(`[Upload] Processing file: ${fileName} (${fileSize} bytes)`);
+
+        // Step 2: Validate file if requested
+        if (validateFile) {
+          const formattedFileName = `${fileName}||${fileSize}`;
+          const validationData = await wi.exec(`
+            query getDataFilesByFileNameAndSize($projectId: Int!, $deploymentId: Int!, $fileNameList: [String]!) {
+              getDataFilesByFileNameAndSize(
+                projectId: $projectId,
+                deploymentId: $deploymentId,
+                fileNameList: $fileNameList
+              ) {
+                exists
+              }
+            }
+          `, {
+            projectId: parseInt(projectId),
+            deploymentId: parseInt(deploymentId),
+            fileNameList: [formattedFileName]
+          }, "getDataFilesByFileNameAndSize", bearerToken);
+
+          const fileExists = validationData.getDataFilesByFileNameAndSize?.exists?.[0] || false;
+          if (fileExists) {
+            return {
+              content: [
+                { type: "text", text: `❌ File "${fileName}" already exists in this project/deployment.` },
+                { type: "text", text: `💡 File path: ${localFilePath}` }
+              ]
+            };
+          }
+        }
+
+        // Step 3: Create upload session
         const sessionVariables = {
-          uiUploadCreateRequest: {
+          uIUploadCreateRequest: {
             projectId: parseInt(projectId),
             deploymentId: parseInt(deploymentId),
             noOfImages: 1,
@@ -2046,8 +2261,8 @@ async function main() {
         };
 
         const sessionData = await wi.exec(`
-          mutation createUIUpload($uiUploadCreateRequest: UIUploadCreateRequest!) {
-            createUIUpload(uiUploadCreateRequest: $uiUploadCreateRequest) {
+          mutation createUIUpload($uIUploadCreateRequest: UIUploadCreateRequest!) {
+            createUIUpload(uIUploadCreateRequest: $uIUploadCreateRequest) {
               id
               projectId
               deploymentId
@@ -2059,11 +2274,11 @@ async function main() {
         const uploadId = sessionData.createUIUpload?.id;
         if (!uploadId) {
           return {
-            content: [{ type: "text", text: "Failed to create upload session" }]
+            content: [{ type: "text", text: "❌ Failed to create upload session." }]
           };
         }
 
-        // Step 2: Get upload URL
+        // Step 4: Get upload URL
         const urlVariables = {
           projectId: parseInt(projectId),
           deploymentId: parseInt(deploymentId),
@@ -2095,52 +2310,135 @@ async function main() {
             ) {
               id
               mainUrl
-              url
             }
           }
         `, urlVariables, "getUploadUrlByFilenameAndSize", bearerToken);
 
-        const uploadUrl = urlData.getUploadUrlByFilenameAndSize?.mainUrl;
-        if (!uploadUrl) {
+        const uploadInfo = urlData.getUploadUrlByFilenameAndSize;
+        if (!uploadInfo) {
           return {
-            content: [{ type: "text", text: "Failed to get upload URL" }]
+            content: [{ type: "text", text: "❌ Failed to get upload URL." }]
           };
         }
 
-        // Step 3: Provide completion instructions
-        const workflow = {
+        // Step 5: Upload file to Google Cloud Storage (Media Upload pattern)
+        console.log(`[Upload] Uploading file to Google Cloud Storage using media upload...`);
+        console.log(`[Upload] Upload URL: ${uploadInfo.mainUrl}`);
+        console.log(`[Upload] File size: ${fileSize} bytes`);
+        console.log(`[Upload] Content type: ${contentType || 'image/jpeg'}`);
+
+        const fileBuffer = fs.readFileSync(localFilePath);
+        const uploadResponse = await fetch(uploadInfo.mainUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': contentType || 'image/jpeg',
+            'Content-Length': fileSize,
+          },
+          body: fileBuffer,
+        });
+
+        console.log(`[Upload] Response status: ${uploadResponse.status}`);
+        console.log(`[Upload] Response headers:`, Object.fromEntries(uploadResponse.headers.entries()));
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error(`[Upload] Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+          console.error(`[Upload] Error response: ${errorText}`);
+          throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText} - ${errorText}`);
+        }
+
+        console.log(`[Upload] File uploaded successfully to Google Cloud Storage (${uploadResponse.status})`);
+
+        // Step 6: Complete the upload session
+        const completeVariables = {
+          uploadId: uploadId,
+          updateUIUplaodRequest: {
+            status: "UPLOAD_FINISHED"
+          }
+        };
+
+        const completeData = await wi.exec(`
+          mutation updateUIUpload($uploadId: Int!, $updateUIUplaodRequest: UIUploadUpdateRequest!) {
+            updateUIUpload(uploadId: $uploadId, updateUIUplaodRequest: $updateUIUplaodRequest) {
+              id
+              deploymentId
+              status
+              finishedAt
+              noOfImages
+              noOfSuccessfulImages
+              noOfFailedImages
+            }
+          }
+        `, completeVariables, "updateUIUpload", bearerToken);
+
+        const result = {
           uploadSession: {
             id: uploadId,
             projectId: projectId,
             deploymentId: deploymentId,
-            status: "READY_FOR_UPLOAD"
+            status: "UPLOAD_COMPLETED"
           },
-          uploadInstructions: {
-            uploadUrl: uploadUrl,
+          fileInfo: {
             fileName: fileName,
             fileSize: fileSize,
-            contentType: contentType || "image/jpeg",
-            nextSteps: [
-              "Use the upload URL to POST your image file",
-              "After upload, call completeUpload tool with the upload ID",
-              "Monitor upload status in Wildlife Insights interface"
-            ]
+            localFilePath: localFilePath,
+            contentType: contentType || "image/jpeg"
           },
-          curlExample: `curl -X PUT "${uploadUrl}" -H "Content-Type: ${contentType || 'image/jpeg'}" --data-binary @${fileName}`,
-          completeUploadCommand: `Use tool: completeUpload with uploadId: ${uploadId}`
+          uploadDetails: {
+            uploadUrl: uploadInfo.mainUrl,
+            uploadResponse: uploadResponse.status,
+            sessionCompletion: completeData.updateUIUpload
+          },
+          nextSteps: [
+            "File has been uploaded and session completed",
+            "Monitor processing status in Wildlife Insights interface",
+            "Check upload report for processing results",
+            "File should appear in identification workflow once processed"
+          ],
+          troubleshooting: {
+            "If file doesn't appear": "Wait a few minutes for processing, then check upload report",
+            "If processing fails": "Use 'Retry unprocessed images' in Wildlife Insights interface",
+            "If session shows errors": "Check the upload report URL for detailed error information"
+          }
         };
 
         return {
           content: [
-            { type: "text", text: `Upload workflow ready! Session ID: ${uploadId}. Use the provided URL to upload your ${fileName} file.` },
-            { type: "resource", resource: { text: JSON.stringify(workflow, null, 2), uri: "upload-workflow.json" } }
+            { type: "text", text: `🎉 File "${fileName}" uploaded successfully! Session ${uploadId} completed.` },
+            { type: "resource", resource: { text: JSON.stringify(result, null, 2), uri: "upload-result.json" } }
           ]
         };
       } catch (error) {
         return {
-          content: [{ type: "text", text: `Error in upload workflow: ${error}` }]
+          content: [{ type: "text", text: `❌ Error uploading file: ${error}` }]
         };
       }
+    }
+  );
+
+  server.registerTool(
+    "uploadImageWorkflow",
+    {
+      title: "Complete Image Upload Workflow",
+      description: "Browser-compatible workflow for uploading camera trap images (DEPRECATED - use uploadImageFile instead)",
+      inputSchema: {
+        projectId: z.string(),
+        deploymentId: z.string(),
+        fileName: z.string(),
+        fileSize: z.string(),
+        contentType: z.string().default("image/jpeg"),
+        validateFile: z.boolean().default(true),
+        skipDeploymentValidation: z.boolean().default(false),
+        bearerToken: z.string().optional(),
+      } as ZodRawShape,
+    },
+    async (args: { [key: string]: any }) => {
+      return {
+        content: [
+          { type: "text", text: `💡 This tool has been replaced by 'uploadImageFile' which handles the complete upload process automatically.` },
+          { type: "text", text: `🔧 Use 'uploadImageFile' instead - it uploads the file directly without requiring manual curl commands.` }
+        ]
+      };
     }
   );
 

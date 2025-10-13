@@ -1,0 +1,221 @@
+# Wildlife Insights MCP Server - Custom Instructions
+
+## Project Overview
+You are working on a Wildlife Insights GraphQL MCP (Model Context Protocol) server that provides natural language access to wildlife data for conservation and ranch management. This server enables AI assistants to help users with species identification, wildlife analytics, and habitat management insights.
+
+## Core Principles
+
+### 1. Natural Language Interface
+- **Tool Naming**: Use outcome-focused, natural language names that describe what users want to achieve
+- **✅ Good**: "getMyOrganizations", "exploreMyData", "getRanchManagementInsights"
+- **❌ Avoid**: Technical API endpoint names like "getParticipantData"
+
+### 2. User Experience Focus
+- **Progressive Disclosure**: Start with simple functionality, reveal complexity as needed
+- **Context Awareness**: Auto-detect user organizations and projects when possible
+- **Helpful Errors**: Provide actionable guidance, not raw technical errors
+
+### 3. Texas Ranch Context
+- **Primary Use Case**: Texas ranch wildlife management (conservation/hunting/ecotourism balance)
+- **Species Knowledge**: Include Texas game species classification and local ecological considerations
+- **Management Goals**: Support balanced wildlife management objectives
+
+## Technical Standards
+
+### 1. Code Organization
+- **TypeScript**: Use strict TypeScript throughout with proper type safety
+- **Error Handling**: Comprehensive try-catch blocks with user-friendly messages
+- **Input Validation**: Zod schemas for all tool inputs with proper type casting
+- **Response Format**: Consistent dual-format (human-readable + structured JSON)
+
+### 2. Response Formatting Pattern
+```typescript
+return {
+  content: [
+    { type: "text", text: "Human readable summary" },
+    { type: "resource", resource: {
+      text: JSON.stringify(data, null, 2),
+      uri: "descriptive-filename.json"
+    }}
+  ]
+}
+```
+
+### 3. Authentication Management
+- **Environment Variables**: Use WI_BEARER_TOKEN for persistent tokens
+- **Runtime Updates**: Support session-based token management via auth.setToken()
+- **Secure Defaults**: Never store tokens in code
+
+### 4. GraphQL Integration
+- **Variable Types**: Handle ID vs Int type conversions (Project IDs are strings)
+- **Pagination**: Support both limit/offset and pageSize/pageNumber patterns
+- **Error Parsing**: Extract meaningful errors from GraphQL responses
+
+## Memory Bank Management
+
+### Critical Operating Principle
+**READ ALL MEMORY BANK FILES AT THE START OF EVERY TASK** - This is not optional. The memory bank contains the complete project context and must be reviewed before any work begins.
+
+### Memory Bank Structure
+```
+projectbrief.md (Foundation) → productContext.md
+                          → systemPatterns.md
+                          → techContext.md
+                          → activeContext.md
+                          → progress.md
+```
+
+### Memory Bank Workflows
+
+#### Plan Mode Workflow
+1. **Read All Files**: Review every memory bank file completely
+2. **Verify Completeness**: Ensure all files are current and accurate
+3. **Develop Strategy**: Create approach based on complete context
+4. **Present Plan**: Document approach clearly for user approval
+
+#### Act Mode Workflow
+1. **Check Context**: Review memory bank for current state
+2. **Update Documentation**: Document any changes or insights
+3. **Execute Task**: Implement based on complete context
+4. **Document Changes**: Update relevant memory bank files
+
+### Documentation Update Triggers
+Update memory bank files when:
+- **Discovering new project patterns** - Document in systemPatterns.md
+- **After implementing significant changes** - Update activeContext.md and progress.md
+- **When user requests "update memory bank"** - Review ALL files (required)
+- **When context needs clarification** - Enhance relevant files
+
+### Memory Bank Update Process
+1. **Review ALL Files**: Even if only some need updates
+2. **Document Current State**: Capture what exists now
+3. **Clarify Next Steps**: Define what happens next
+4. **Document Insights & Patterns**: Record learnings and decisions
+
+## Workflow Guidelines
+
+### 1. Development Process
+- **Memory Bank First**: Always start by reading all memory bank files
+- **Context Verification**: Ensure understanding before proceeding
+- **Documentation Updates**: Keep memory bank current with all changes
+- **Testing**: Validate tools against real Wildlife Insights API before completion
+- **Error Messages**: Test error scenarios and ensure helpful user guidance
+
+### 2. Tool Development Pattern
+1. **Schema Definition**: Create Zod schema with proper type casting
+2. **Handler Implementation**: Extract parameters from args object
+3. **Error Handling**: Wrap in try-catch with user-friendly messages
+4. **Response Formatting**: Include both text summary and structured data
+5. **Testing**: Validate against real API endpoints
+
+### 3. Documentation Requirements
+- **Tool Descriptions**: Write clear, actionable descriptions
+- **Memory Bank Updates**: Document significant decisions and changes
+- **Error Scenarios**: Document common issues and solutions
+- **Context Preservation**: Maintain complete project context across sessions
+
+## Project-Specific Knowledge
+
+### 1. Current Project Status
+- **Project**: "Initial_Run" (ID: 2010935) - New project with 268 images pending identification
+- **Organization**: TrailSense (ID: 2005419) - Owner: Philip Hayden
+- **Data Status**: Images uploaded, awaiting species identification
+- **Analytics**: Limited until more identified images are processed
+
+### 2. Key Tools Available
+- **Navigation**: getMyOrganizations, getMyProjects, exploreMyData
+- **Identification**: getImagesForIdentification, submitIdentification, bulkIdentifyImages
+- **Analytics**: getProjectAnalytics, getSpeciesAnalytics, getRanchManagementInsights
+- **Management**: getDeploymentAnalytics for camera optimization
+
+### 3. Success Metrics
+- **Technical**: All GraphQL queries functional, MCP server responsive
+- **Functional**: Natural language interface, efficient identification workflow
+- **User Experience**: Intuitive tools, helpful error messages, actionable insights
+
+## Quality Standards
+
+### 1. Code Quality
+- **TypeScript Coverage**: 100% type safety
+- **Error Resilience**: Graceful handling of API failures
+- **Input Validation**: All user inputs validated and sanitized
+- **Documentation**: Inline comments for complex logic
+
+### 2. User Experience Quality
+- **Tool Names**: Intuitive and descriptive
+- **Response Clarity**: Clear human-readable summaries
+- **Error Helpfulness**: Actionable guidance for common issues
+- **Progressive Enhancement**: Core functionality first, advanced features second
+
+## Decision-Making Framework
+
+### 1. Tool Design
+- **Question**: Does this tool name clearly indicate what the user will get?
+- **Question**: Is the functionality discoverable and intuitive?
+- **Question**: Does it follow progressive disclosure principles?
+
+### 2. Error Handling
+- **Question**: Will users understand what went wrong?
+- **Question**: Is there clear guidance on how to fix the issue?
+- **Question**: Are technical details preserved for debugging?
+
+### 3. Feature Addition
+- **Question**: Does this align with Texas ranch management goals?
+- **Question**: Is it more valuable than existing functionality?
+- **Question**: Can it work with limited data (new projects)?
+
+## Maintenance Responsibilities
+
+### 1. Regular Tasks
+- **API Compatibility**: Test against current Wildlife Insights API
+- **Memory Bank**: Keep documentation current with project changes
+- **Error Monitoring**: Track and improve error message quality
+- **Performance**: Monitor response times and optimize as needed
+
+### 2. Update Procedures
+- **Schema Changes**: Update GraphQL queries and TypeScript types
+- **New Tools**: Follow established patterns and naming conventions
+- **Bug Fixes**: Test thoroughly against real API before deployment
+- **Documentation**: Update memory-bank/ for significant changes
+
+## Project Health Indicators
+
+### 🟢 Excellent
+- All tools functional and tested
+- Clear error messages with actionable guidance
+- Natural language interface working well
+- Memory bank documentation current
+
+### 🟡 Needs Attention
+- New tools added but not fully tested
+- Error messages could be more specific
+- Documentation gaps identified
+- Performance issues detected
+
+### 🔴 Critical Issues
+- Core functionality broken
+- Authentication failures
+- API compatibility issues
+- Major user experience problems
+
+## Success Criteria Reminder
+
+### Technical Success
+- ✅ MCP server connects reliably to Wildlife Insights API
+- ✅ All GraphQL queries function correctly with proper error handling
+- ✅ Authentication system works seamlessly with token management
+- ✅ TypeScript implementation is clean and type-safe
+
+### Functional Success
+- ✅ Natural language tool interface enables intuitive data access
+- ✅ Identification workflow processes camera trap images efficiently
+- ✅ Analytics provide meaningful wildlife management insights
+- ✅ Texas ranch management goals are well-supported
+
+### User Experience Success
+- ✅ Tool names and descriptions are intuitive and discoverable
+- ✅ Error messages provide helpful guidance, not technical jargon
+- ✅ Progressive disclosure reveals complexity appropriately
+- ✅ Context-aware responses adapt to user needs and data availability
+
+Remember: This project bridges complex wildlife data with actionable management decisions. Every tool and feature should serve the goal of making wildlife data accessible and useful for conservation and ranch management.
