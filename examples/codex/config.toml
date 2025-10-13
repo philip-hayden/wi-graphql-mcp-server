@@ -1,0 +1,8 @@
+[mcpServers.wi-graphql]
+command = "node"
+args = ["./node_modules/tsx/dist/cli.js", "src/server.ts"]
+cwd = "/Users/phayden/OneDrive/idea_projects/wi-graphql-mcp-server"
+
+[mcpServers.wi-graphql.env]
+WI_GRAPHQL_ENDPOINT = "https://api.wildlifeinsights.org/graphql"
+# WI_BEARER_TOKEN = "eyJhbGciOi..." # optional

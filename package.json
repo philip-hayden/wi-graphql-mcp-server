@@ -1,0 +1,68 @@
+{
+  "name": "wildlife-insights-mcp",
+  "version": "0.2.1",
+  "description": "Model Context Protocol (MCP) server for Wildlife Insights GraphQL API with natural language tools for wildlife management and species identification",
+  "keywords": [
+    "wildlife",
+    "conservation",
+    "camera-trap",
+    "species-identification",
+    "mcp",
+    "graphql",
+    "texas",
+    "ranch-management",
+    "biodiversity",
+    "wildlife-insights"
+  ],
+  "homepage": "https://github.com/yourusername/wildlife-insights-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/wildlife-insights-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/wildlife-insights-mcp/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Philip Hayden",
+    "email": "your.email@example.com"
+  },
+  "type": "module",
+  "main": "dist/server.js",
+  "types": "dist/types.d.ts",
+  "bin": {
+    "wildlife-insights-mcp": "./dist/server.js"
+  },
+  "files": [
+    "dist/",
+    "memory-bank/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p .",
+    "start": "node dist/server.js",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"Tests would go here\" && exit 0",
+    "lint": "echo \"Linting would go here\" && exit 0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "dotenv": "^16.4.5",
+    "graphql": "^16.9.0",
+    "graphql-request": "^7.1.0",
+    "zod": "^3.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
