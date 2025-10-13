@@ -35,7 +35,6 @@
   },
   "files": [
     "dist/",
-    "memory-bank/",
     "README.md",
     "LICENSE"
   ],
