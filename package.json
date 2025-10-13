@@ -45,7 +45,10 @@
     "start": "node dist/server.js",
     "prepublishOnly": "npm run build",
     "test": "echo \"Tests would go here\" && exit 0",
-    "lint": "echo \"Linting would go here\" && exit 0"
+    "lint": "echo \"No linting configured yet\" && exit 0",
+    "clean": "rm -rf dist/",
+    "rebuild": "npm run clean && npm run build",
+    "type-check": "tsc --noEmit"
   },
   "engines": {
     "node": ">=18.0.0"

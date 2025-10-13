@@ -1,0 +1,20 @@
+# Wildlife Insights MCP Server - Code Owners
+
+# Repository Administration
+* @yourusername
+
+# Core Server Implementation
+src/server.ts @yourusername
+src/wiClient.ts @yourusername
+
+# Documentation and Memory Bank
+memory-bank/ @yourusername
+README.md @yourusername
+
+# Build and Configuration
+package.json @yourusername
+tsconfig.json @yourusername
+.github/workflows/ @yourusername
+
+# Examples and Templates
+examples/ @yourusername
