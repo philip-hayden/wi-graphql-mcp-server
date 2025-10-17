@@ -39,38 +39,52 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Determine version bump type based on PR labels
+      # Determine version bump type using the payload (more robust than shell string checks)
       - name: Determine version bump type
         id: bump-type
-        run: |
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'bug') }}" == "true" ]]; then
-            echo "type=patch" >> $GITHUB_OUTPUT
-          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'enhancement') }}" == "true" ]]; then
-            echo "type=minor" >> $GITHUB_OUTPUT
-          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'documentation') }}" == "true" ]]; then
-            echo "type=minor" >> $GITHUB_OUTPUT
-          else
-            echo "type=patch" >> $GITHUB_OUTPUT
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
+            let t = 'patch';
+            if (labels.includes('enhancement') || labels.includes('documentation')) {
+              t = 'minor';
+            } else if (labels.includes('bug')) {
+              t = 'patch';
+            } else {
+              t = 'patch';
+            }
+            core.setOutput('type', t);
 
-      # Create new branch and bump version
+      # Create new branch for the bump
       - name: Create version bump branch
         id: create-branch
         run: |
           BRANCH="version-bump/auto-${GITHUB_SHA::8}"
-          git checkout -b $BRANCH
+          git checkout -b "$BRANCH"
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
-      # Bump version using our version manager (without pushing)
+      # Bump version (no git commit/tag) and capture new version
       - name: Update version
         id: bump-version
         run: |
-          npm --no-git-tag-version version ${{ steps.bump-type.outputs.type }}
+          npm --no-git-tag-version version "${{ steps.bump-type.outputs.type }}"
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      # Create PR for version bump
+      # If there are no changes, skip creating a PR (avoid empty PRs)
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if git status --porcelain | grep -q .; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Pull Request
+        if: steps.check-changes.outputs.changes == 'true'
+        id: create-pr
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -90,17 +104,33 @@ jobs:
             automated
             version-bump
 
-      # Comment on the original PR
+      # If there were no changes to commit, comment on the original PR and exit gracefully
+      - name: Comment on original PR (no bump needed)
+        if: steps.check-changes.outputs.changes == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const bumpType = '${{ steps.bump-type.outputs.type }}'
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `ℹ️ No version change was necessary (determined bump: ${bumpType}). No version bump PR was created.`
+            })
+
+      # Comment on the original PR with the version bump PR link (if created)
       - name: Comment on Original PR
+        if: steps.check-changes.outputs.changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const newVersion = '${{ steps.bump-version.outputs.version }}'
             const bumpType = '${{ steps.bump-type.outputs.type }}'
+            const prUrl = '${{ steps.create-pr.outputs.pull-request-url }}'
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `📦 Created version bump PR for \`${newVersion}\` (${bumpType} increment)\n\nPlease review and merge the version bump PR to complete the release.`
+              body: `📦 Created version bump PR for \`${newVersion}\` (${bumpType} increment): ${prUrl}\n\nPlease review and merge the version bump PR to complete the release.`
             })
