@@ -34,6 +34,14 @@ jobs:
     - name: Build project
       run: npm run build
 
+    - name: Assert build artifact
+      run: |
+        if [ ! -f dist/server.js ]; then
+          echo "Expected build artifact dist/server.js not found";
+          ls -R dist || true;
+          exit 1;
+        fi
+
     - name: Run tests
       run: npm test --if-present
 

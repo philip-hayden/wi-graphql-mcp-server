@@ -41,7 +41,7 @@
   "scripts": {
     "dev": "tsx src/server/server.ts",
     "build": "tsc -p .",
-    "start": "node dist/server/server.js",
+  "start": "node dist/server.js",
     "prepublishOnly": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",

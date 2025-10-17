@@ -2217,7 +2217,7 @@ async function main() {
         const fileSize = fileStats.size.toString();
         const fileName = path.basename(localFilePath);
 
-        console.log(`[Upload] Processing file: ${fileName} (${fileSize} bytes)`);
+  console.debug(`[Upload] Processing file: ${fileName} (${fileSize} bytes)`);
 
         // Step 2: Validate file if requested
         if (validateFile) {
@@ -2322,10 +2322,10 @@ async function main() {
         }
 
         // Step 5: Upload file to Google Cloud Storage (Media Upload pattern)
-        console.log(`[Upload] Uploading file to Google Cloud Storage using media upload...`);
-        console.log(`[Upload] Upload URL: ${uploadInfo.mainUrl}`);
-        console.log(`[Upload] File size: ${fileSize} bytes`);
-        console.log(`[Upload] Content type: ${contentType || 'image/jpeg'}`);
+  console.debug(`[Upload] Uploading file to Google Cloud Storage using media upload...`);
+  console.debug(`[Upload] Upload URL: ${uploadInfo.mainUrl}`);
+  console.debug(`[Upload] File size: ${fileSize} bytes`);
+  console.debug(`[Upload] Content type: ${contentType || 'image/jpeg'}`);
 
         const fileBuffer = fs.readFileSync(localFilePath);
         const uploadResponse = await fetch(uploadInfo.mainUrl, {
@@ -2337,8 +2337,8 @@ async function main() {
           body: fileBuffer,
         });
 
-        console.log(`[Upload] Response status: ${uploadResponse.status}`);
-        console.log(`[Upload] Response headers:`, Object.fromEntries(uploadResponse.headers.entries()));
+  console.debug(`[Upload] Response status: ${uploadResponse.status}`);
+  console.debug(`[Upload] Response headers:`, Object.fromEntries(uploadResponse.headers.entries()));
 
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text();
@@ -2347,7 +2347,7 @@ async function main() {
           throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText} - ${errorText}`);
         }
 
-        console.log(`[Upload] File uploaded successfully to Google Cloud Storage (${uploadResponse.status})`);
+  console.info(`[Upload] File uploaded successfully to Google Cloud Storage (${uploadResponse.status})`);
 
         // Step 6: Complete the upload session
         const completeVariables = {

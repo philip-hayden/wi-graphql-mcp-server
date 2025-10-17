@@ -26,16 +26,16 @@ export class WiClient {
   async exec<T = any>(query: string, variables: any = {}, operationName?: string, perCallToken?: string): Promise<T> {
     try {
       // Log the GraphQL request for debugging
-      console.log(`[WiClient] Executing ${operationName || 'unnamed'} operation`);
-      console.log(`[WiClient] Query: ${query.substring(0, 100)}${query.length > 100 ? '...' : ''}`);
-      console.log(`[WiClient] Variables:`, JSON.stringify(variables, null, 2));
+  console.debug(`[WiClient] Executing ${operationName || 'unnamed'} operation`);
+  console.debug(`[WiClient] Query: ${query.substring(0, 100)}${query.length > 100 ? '...' : ''}`);
+  console.debug(`[WiClient] Variables:`, JSON.stringify(variables, null, 2));
 
       const headers = perCallToken ? { Authorization: `Bearer ${perCallToken}` } : undefined;
       const result = await this.client.request<T>(query, variables, { ...(headers ?? {}), "x-operation-name": operationName ?? "" });
 
       // Log successful response
-      console.log(`[WiClient] ${operationName || 'Operation'} completed successfully`);
-      console.log(`[WiClient] Response keys:`, Object.keys(result || {}));
+  console.debug(`[WiClient] ${operationName || 'Operation'} completed successfully`);
+  console.debug(`[WiClient] Response keys:`, Object.keys(result || {}));
 
       return result;
     } catch (err) {
