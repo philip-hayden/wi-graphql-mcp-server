@@ -66,6 +66,15 @@ jobs:
     - name: Build project
       run: npm run build
 
+    - name: Check if version exists
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        if npm view wildlife-insights-mcp@$VERSION version &> /dev/null; then
+          echo "Error: Version $VERSION already exists on npm"
+          exit 1
+        fi
+        echo "Version $VERSION is available for publishing"
+
     - name: Publish to NPM
       run: npm publish
       env:
