@@ -1,4 +1,7 @@
-# Wildlife Insights MCP Server
+# wi-graphql-mcp-server
+
+[![CI/CD Pipeline](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/ci.yml)
+[![Auto Version](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/auto-version.yml/badge.svg)](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/auto-version.yml)
 
 🦌 **Natural Language Interface for Wildlife Insights GraphQL API**
 
