@@ -48,7 +48,7 @@ function generateSpeciesRecommendations(species: any[], ranchGoals: string): str
   }
 
   const topSpecies = species[0];
-  const totalImages = species.reduce((sum, s) => sum + s.count, 0);
+  const _totalImages = species.reduce((sum, s) => sum + s.count, 0);
 
   switch (ranchGoals) {
     case "hunting":
@@ -231,7 +231,7 @@ query GetDeploymentsByProject($projectId: Int!, $pagination: Pagination, $filter
   }
 }`;
 
-const GET_MY_ORGANIZATIONS_QUERY = `
+const _GET_MY_ORGANIZATIONS_QUERY = `
 query GetMyOrganizations {
   getParticipantData {
     user {
@@ -267,7 +267,7 @@ query GetMyOrganizations {
   }
 }`;
 
-const GET_PROJECT_DETAILS_QUERY = `
+const _GET_PROJECT_DETAILS_QUERY = `
 query GetProjectDetails($projectId: Int!) {
   getProject(organizationId: 0, projectId: $projectId) {
     id
@@ -326,7 +326,7 @@ query GetProjectDetails($projectId: Int!) {
   }
 }`;
 
-const EXPLORE_HIERARCHY_QUERY = `
+const _EXPLORE_HIERARCHY_QUERY = `
 query ExploreHierarchy($organizationId: Int, $projectId: Int) {
   organizations(pagination: { pageSize: 100 }, filters: { isOwnerEditorOrContributor: true }) {
     data {
@@ -522,7 +522,7 @@ async function main() {
     },
     async (args: { [key: string]: any }) => {
       try {
-        const { projectId, limit, offset, bearerToken } = args;
+        const { projectId, limit, _offset, bearerToken } = args;
         const variables = {
           projectId: parseInt(projectId),
           pagination: {
@@ -948,7 +948,7 @@ async function main() {
     },
     async (args: { [key: string]: any }) => {
       try {
-        const { projectId, limit, offset, bearerToken } = args;
+        const { projectId, limit, _offset, bearerToken } = args;
         const variables = {
           projectId: parseInt(projectId),
           pagination: { pageSize: limit || 20, pageNumber: 1, sort: [] }
@@ -2432,7 +2432,7 @@ async function main() {
         bearerToken: z.string().optional(),
       } as ZodRawShape,
     },
-    async (args: { [key: string]: any }) => {
+    async (_args: { [key: string]: any }) => {
       return {
         content: [
           { type: "text", text: `💡 This tool has been replaced by 'uploadImageFile' which handles the complete upload process automatically.` },
