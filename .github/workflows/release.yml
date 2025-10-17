@@ -1,5 +1,8 @@
 name: Release and Publish
 
+permissions:
+  contents: read
+
 on:
   push:
     tags:
@@ -59,6 +62,8 @@ jobs:
   create-release:
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/checkout@v4
