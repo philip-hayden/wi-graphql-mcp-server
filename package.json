@@ -1,6 +1,6 @@
 {
   "name": "wildlife-insights-mcp",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Model Context Protocol (MCP) server for Wildlife Insights GraphQL API with natural language tools for wildlife management and species identification",
   "keywords": [
     "wildlife",
@@ -41,7 +41,7 @@
   "scripts": {
     "dev": "tsx src/server/server.ts",
     "build": "tsc -p .",
-  "start": "node dist/server.js",
+    "start": "node dist/server.js",
     "prepublishOnly": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",
