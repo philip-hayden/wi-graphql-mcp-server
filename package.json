@@ -39,15 +39,22 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev": "tsx src/server/server.ts",
     "build": "tsc -p .",
-    "start": "node dist/server.js",
+    "start": "node dist/server/server.js",
     "prepublishOnly": "npm run build",
-    "test": "echo \"Tests would go here\" && exit 0",
-    "lint": "echo \"No linting configured yet\" && exit 0",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --testPathPattern=integration",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "type-check": "tsc --noEmit",
     "clean": "rm -rf dist/",
     "rebuild": "npm run clean && npm run build",
-    "type-check": "tsc --noEmit"
+    "prepare": "husky install || true"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -60,7 +67,15 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.8.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "eslint": "^9.37.0",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.5",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   },

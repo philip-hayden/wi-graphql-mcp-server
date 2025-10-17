@@ -550,7 +550,7 @@ async function main() {
       description: "Execute a custom GraphQL query or mutation",
       inputSchema: {
         query: z.string(),
-        variables: z.record(z.any()).default({}),
+        variables: z.record(z.string(), z.any()).default({}),
         operationName: z.string().optional(),
         bearerToken: z.string().optional(),
       } as ZodRawShape,

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const GqlArgsSchema = z.object({
   query: z.string(),
-  variables: z.record(z.any()).default({}),
+  variables: z.record(z.string(), z.any()).default({}),
   operationName: z.string().optional(),
   bearerToken: z.string().optional(),
 });
