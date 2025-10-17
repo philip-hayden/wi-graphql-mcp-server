@@ -14,13 +14,13 @@
     "biodiversity",
     "wildlife-insights"
   ],
-  "homepage": "https://github.com/yourusername/wildlife-insights-mcp",
+  "homepage": "https://github.com/philip-hayden/wi-graphql-mcp-server",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/wildlife-insights-mcp.git"
+    "url": "git+https://github.com/philip-hayden/wi-graphql-mcp-server.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/wildlife-insights-mcp/issues"
+    "url": "https://github.com/philip-hayden/wi-graphql-mcp-server/issues"
   },
   "license": "MIT",
   "author": {

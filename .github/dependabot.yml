@@ -9,9 +9,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "yourusername"
+      - "philip-hayden"
     assignees:
-      - "yourusername"
+      - "philip-hayden"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -22,9 +22,6 @@ updates:
       # Ignore major version updates for breaking changes
       - dependency-name: "@modelcontextprotocol/sdk"
         update-types: ["version-update:semver-major"]
-      # Ignore alpha/beta/rc versions
-      - dependency-name: "*"
-        update-types: ["version-update:semver-prerelease"]
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -35,9 +32,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "yourusername"
+      - "philip-hayden"
     assignees:
-      - "yourusername"
+      - "philip-hayden"
     commit-message:
       prefix: "chore"
       include: "scope"

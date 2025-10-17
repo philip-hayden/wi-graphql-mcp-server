@@ -33,27 +33,6 @@ jobs:
     - name: Build project
       run: npm run build
 
-    - name: Get current version
-      id: version
-      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-    - name: Increment patch version
-      run: |
-        current_version="${{ steps.version.outputs.version }}"
-        IFS='.' read -r major minor patch <<< "$current_version"
-        new_patch=$((patch + 1))
-        new_version="$major.$minor.$new_patch"
-        echo "New version: $new_version"
-        echo "new_version=$new_version" >> $GITHUB_ENV
-        npm version $new_version --no-git-tag-version
-
-    - name: Commit version bump
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add package.json package-lock.json
-        git commit -m "Bump version to $new_version [skip ci]"
-
     - name: Publish to NPM
       run: npm publish
       env:
@@ -68,17 +47,24 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Extract version from tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=$GITHUB_REF" >> $GITHUB_OUTPUT
+
     - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ steps.version.outputs.tag }}
+        release_name: Release v${{ steps.version.outputs.version }}
         body: |
           ## Changes
 
-          See the full changelog at: https://github.com/yourusername/wildlife-insights-mcp/blob/main/CHANGELOG.md
+          See the full changelog at: https://github.com/philip-hayden/wi-graphql-mcp-server/blob/main/CHANGELOG.md
 
           ## Installation
 
@@ -88,6 +74,6 @@ jobs:
 
           ## Usage
 
-          See the [README](https://github.com/yourusername/wildlife-insights-mcp/blob/main/README.md) for detailed usage instructions.
+          See the [README](https://github.com/philip-hayden/wi-graphql-mcp-server/blob/main/README.md) for detailed usage instructions.
         draft: false
         prerelease: false
