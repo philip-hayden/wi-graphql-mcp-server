@@ -1,5 +1,11 @@
 name: Auto Version Bump
 
+# Add top-level permissions to ensure workflow has required access
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 on:
   pull_request:
     types: [closed]
@@ -12,6 +18,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
 
     steps:
       - uses: actions/checkout@v5
