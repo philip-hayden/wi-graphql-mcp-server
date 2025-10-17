@@ -3,6 +3,8 @@
 [![CI/CD Pipeline](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/ci.yml)
 [![Auto Version](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/auto-version.yml/badge.svg)](https://github.com/philip-hayden/wi-graphql-mcp-server/actions/workflows/auto-version.yml)
 
+A Model Context Protocol (MCP) server implementing the Wildlife Insights GraphQL API. This server provides natural language tools for wildlife management and species identification.
+
 🦌 **Natural Language Interface for Wildlife Insights GraphQL API**
 
 A comprehensive Model Context Protocol (MCP) server that provides intuitive, natural language tools for accessing Wildlife Insights data. Perfect for wildlife management, species identification workflows, and Texas ranch operations.
