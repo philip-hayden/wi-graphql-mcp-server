@@ -5,6 +5,7 @@
 
 A Model Context Protocol (MCP) server implementing the Wildlife Insights GraphQL API. This server provides natural language tools for wildlife management and species identification.
 
+
 🦌 **Natural Language Interface for Wildlife Insights GraphQL API**
 
 A comprehensive Model Context Protocol (MCP) server that provides intuitive, natural language tools for accessing Wildlife Insights data. Perfect for wildlife management, species identification workflows, and Texas ranch operations.
