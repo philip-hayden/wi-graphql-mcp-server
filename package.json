@@ -54,7 +54,10 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist/",
     "rebuild": "npm run clean && npm run build",
-    "prepare": "husky install || true"
+    "prepare": "husky install || true",
+    "version:check": "node scripts/version-manager.mjs check",
+    "version:bump": "node scripts/version-manager.mjs bump",
+    "version:status": "node scripts/version-manager.mjs status"
   },
   "engines": {
     "node": ">=18.0.0"
