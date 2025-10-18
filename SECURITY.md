@@ -2,6 +2,7 @@
 
 Wildlife Insights MCP Server is committed to keeping wildlife data private and ensuring the integrity of its tooling. We welcome responsible disclosure of vulnerabilities and will work with reporters to remediate issues quickly.
 
+
 ## Supported Versions
 
 | Version | Supported |

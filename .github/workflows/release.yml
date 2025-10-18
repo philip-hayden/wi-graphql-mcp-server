@@ -11,11 +11,9 @@ permissions:
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,12 +21,10 @@ jobs:
 
       - name: Ensure tags are present
         run: git fetch --tags --force
-
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
-
       - run: npm ci
       - run: npm run build --if-present
 
@@ -58,7 +54,6 @@ jobs:
           else
             echo "RELEASE_PUBLISHED=0" >> $GITHUB_ENV
           fi
-
       # Create or update the maintenance branch (e.g., releases/v1.7) at the new tag
       - name: Create/Update maintenance branch for this line
         if: env.RELEASE_PUBLISHED == '1'
@@ -76,7 +71,6 @@ jobs:
             git branch "$LINE" "$TAG"
           fi
           git push -u origin "$LINE" --force-with-lease
-
       # Open a PR to bring the released changes from develop into main (works with protected main)
       - name: Create PR to update main
         if: env.RELEASE_PUBLISHED == '1'
