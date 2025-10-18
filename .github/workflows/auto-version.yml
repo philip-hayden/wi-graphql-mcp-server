@@ -1,6 +1,5 @@
 name: Auto Version Bump
 
-# Add top-level permissions to ensure workflow has required access
 permissions:
   contents: write
   pull-requests: write
@@ -9,37 +8,39 @@ permissions:
 on:
   pull_request:
     types: [closed]
-    branches: [main]
+    branches: [develop]   # run only when PRs into develop are closed
 
 jobs:
   create-version-bump:
-    if: github.event.pull_request.merged == true # only run if PR was merged
+    # run only if the PR was merged AND it wasn't a version-bump PR (avoid recursion)
+    if: >
+      github.event.pull_request.merged == true &&
+      !startsWith(github.event.pull_request.head.ref, 'version-bump/')
+
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout develop
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # needed for getting all tags
+          ref: develop
+          fetch-depth: 0
 
-      - name: Setup Git User
+      - name: Set up Git user
         run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Use Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm ci
 
-      # Determine version bump type based on PR labels
+      # Determine bump type from PR labels: major/minor/patch (default)
       - name: Determine version bump type
         id: bump-type
         run: |
@@ -51,15 +52,7 @@ jobs:
             echo "type=patch" >> $GITHUB_OUTPUT
           fi
 
-      # Create new branch and bump version
-      - name: Create version bump branch
-        id: create-branch
-        run: |
-          BRANCH="version-bump/auto-${GITHUB_SHA::8}"
-          git checkout -b $BRANCH
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      # Bump version using our version manager (without pushing)
+      # Bump version in package.json WITHOUT creating a tag (semantic-release will tag later)
       - name: Update version
         id: bump-version
         run: |
@@ -67,38 +60,38 @@ jobs:
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      # Create PR for version bump
+      # Create a PR from a new branch back into develop
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: Bump version to ${{ steps.bump-version.outputs.version }}"
-          branch: ${{ steps.create-branch.outputs.branch }}
-          delete-branch: true
-          title: "chore: Bump version to ${{ steps.bump-version.outputs.version }}"
+          base: develop
+          branch: version-bump/${{ github.run_id }}-${{ github.sha }}
+          title: "chore(version): bump to v${{ steps.bump-version.outputs.version }}"
+          commit-message: "chore(version): bump to v${{ steps.bump-version.outputs.version }} [skip ci]"
           body: |
             🤖 Automatic version bump triggered by merge of #${{ github.event.pull_request.number }}
-            
-            **Changes:**
-            - Version: ${{ steps.bump-version.outputs.version }}
-            - Type: ${{ steps.bump-type.outputs.type }}
-            
+
+            **Changes**
+            - Version: `v${{ steps.bump-version.outputs.version }}`
+            - Type: `${{ steps.bump-type.outputs.type }}`
+
             This PR was automatically created by the Auto Version Bump workflow.
           labels: |
             automated
             version-bump
+          delete-branch: true
 
-      # Comment on the original PR
-      - name: Comment on Original PR
+      # Optional: comment back on the original PR for traceability
+      - name: Comment on original PR
         uses: actions/github-script@v7
         with:
           script: |
             const newVersion = '${{ steps.bump-version.outputs.version }}'
             const bumpType = '${{ steps.bump-type.outputs.type }}'
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `📦 Created version bump PR for \`${newVersion}\` (${bumpType} increment)\n\nPlease review and merge the version bump PR to complete the release.`
+              issue_number: context.payload.pull_request.number,
+              body: `📦 Created version bump PR to **v${newVersion}** (${bumpType}).`
             })
