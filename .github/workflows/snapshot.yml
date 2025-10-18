@@ -1,0 +1,45 @@
+name: Snapshot
+on:
+  push:
+    branches: [ 'feature/**' ]
+permissions:
+  contents: write
+concurrency:
+  group: snapshot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  snapshot-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Compute base version
+        id: base
+        run: |
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$TAG" ]; then TAG="v$(node -p "require('./package.json').version")"; fi
+          echo "tag=${TAG#v}" >> $GITHUB_OUTPUT
+      - name: Stamp -SNAPSHOT
+        run: |
+          BASE="${{ steps.base.outputs.tag }}"
+          BASE=$(node -e "let v='${BASE}'; console.log(v.split('-')[0].split('+')[0])")
+          SNAP="${BASE}-SNAPSHOT.${{ github.run_number }}+sha.${GITHUB_SHA::7}"
+          node -e "let p=require('./package.json'); p.version='${SNAP}'; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(version): ${SNAP} [skip ci]" || echo "no changes"
+          git push || true
+      - run: npm run build --if-present
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-${{ github.ref_name }}
+          path: |
+            dist/**
+            package.json

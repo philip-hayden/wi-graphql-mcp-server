@@ -1,0 +1,13 @@
+name-template: 'v$NEXT_PATCH_VERSION'
+tag-template: 'v$NEXT_PATCH_VERSION'
+categories:
+  - title: 🚀 Features
+    labels: ['type:feature']
+  - title: 🐛 Fixes
+    labels: ['type:bug']
+  - title: 🧹 Chores
+    labels: ['type:chore']
+  - title: 🔐 Security
+    labels: ['type:security']
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+no-changes-template: 'No changes'

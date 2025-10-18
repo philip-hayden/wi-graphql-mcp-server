@@ -1,0 +1,18 @@
+name: Bug report
+description: Something isn’t working
+labels: ["type:bug", "status:ready"]
+body:
+  - type: textarea
+    id: expected
+    attributes: { label: Expected behavior }
+  - type: textarea
+    id: actual
+    attributes: { label: Actual behavior }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Be specific (inputs, env, logs)
+  - type: input
+    id: version
+    attributes: { label: Affected version/build (tag/commit) }
