@@ -1,4 +1,6 @@
+
 name: CI
+
 on:
   pull_request:
     branches: [ develop ]
@@ -6,29 +8,38 @@ on:
       - 'README.md'
       - 'CHANGELOG.md'
       - 'docs/**'
-      - '.github/**'
+      - '.github/**'   # remove this if you want CI to run when workflows change
   push:
     branches: [ develop, 'feature/**' ]
     paths-ignore:
       - 'README.md'
       - 'CHANGELOG.md'
       - 'docs/**'
+
 permissions:
   contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     node: [18, 20]
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1  # shallow clone is enough for CI
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20'   # change to: ${{ matrix.node }} if you enable the matrix
           cache: 'npm'
+
       - run: npm ci
       - run: npm run lint --if-present
       - run: npm run typecheck --if-present
