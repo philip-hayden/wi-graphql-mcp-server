@@ -1,6 +1,6 @@
 {
   "name": "wildlife-insights-mcp",
-  "version": "0.2.4",
+  "version": "0.2.4-SNAPSHOT.1+sha.b3c6963",
   "description": "Model Context Protocol (MCP) server for Wildlife Insights GraphQL API with natural language tools for wildlife management and species identification",
   "keywords": [
     "wildlife",
@@ -70,10 +70,13 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.8.0",
     "@typescript-eslint/eslint-plugin": "^8.46.1",
     "@typescript-eslint/parser": "^8.46.1",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
     "eslint": "^9.37.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
