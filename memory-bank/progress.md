@@ -1,5 +1,6 @@
 # Wildlife Insights MCP Server - Progress
 
+
 ## What Works ✅
 
 ### Core Infrastructure
