@@ -1,6 +1,6 @@
 {
   "name": "wildlife-insights-mcp",
-  "version": "0.2.4",
+  "version": "0.2.4-SNAPSHOT.2+sha.4c78e43",
   "description": "Model Context Protocol (MCP) server for Wildlife Insights GraphQL API with natural language tools for wildlife management and species identification",
   "keywords": [
     "wildlife",
