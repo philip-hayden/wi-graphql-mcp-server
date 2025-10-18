@@ -1,49 +1,64 @@
 name: Release
+
 on:
   push:
     branches: [ develop ]
+
 permissions:
-  contents: write
+  contents: write   # needed for tags, releases, pushing refs
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0    # full history for semantic-release & tags
+
+      - name: Ensure tags are present
+        run: git fetch --tags --force
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       - run: npm ci
       - run: npm run build --if-present
-      - name: Install release tooling
-        run: |
-          npm i -D semantic-release @semantic-release/git @semantic-release/github @semantic-release/changelog @semantic-release/npm @semantic-release/commit-analyzer @semantic-release/release-notes-generator
+
+      # Invoke semantic-release without mutating package-lock.json
       - name: Semantic Release
         id: sr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+        run: npx -y semantic-release
+
+      # Create or update maintenance branch for this minor line
       - name: Create/Update maintenance branch for this line
         run: |
           TAG=$(git describe --tags --abbrev=0)
           V=${TAG#v}
-          MAJOR=$(echo $V | cut -d. -f1)
-          MINOR=$(echo $V | cut -d. -f2)
+          MAJOR=$(echo "$V" | cut -d. -f1)
+          MINOR=$(echo "$V" | cut -d. -f2)
           LINE="releases/v${MAJOR}.${MINOR}"
           echo "Maint line: $LINE from tag $TAG"
-          if git show-ref --verify --quiet refs/heads/$LINE; then
-            git branch -f $LINE $TAG
+          # create or move branch to the tag (local), then push
+          if git show-ref --verify --quiet "refs/heads/$LINE"; then
+            git branch -f "$LINE" "$TAG"
           else
-            git branch $LINE $TAG
+            git branch "$LINE" "$TAG"
           fi
-          git push -u origin $LINE --force
+          git push -u origin "$LINE" --force-with-lease
+
+      # Optional: keep main pointing at the released tag (FF via ref update)
       - name: Advance main to released tag
         run: |
           TAG=$(git describe --tags --abbrev=0)
-          git checkout -B main $TAG
-          git push -u origin main --force
+          # Push the tag's commit to refs/heads/main without checking out
+          SHA=$(git rev-list -n 1 "$TAG")
+          git push origin "$SHA":refs/heads/main --force-with-lease
