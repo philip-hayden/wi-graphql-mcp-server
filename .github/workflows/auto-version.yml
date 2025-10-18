@@ -1,136 +1,73 @@
 name: Auto Version Bump
 
-# Add top-level permissions to ensure workflow has required access
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type (patch|minor|major)'
+        required: true
+        default: 'patch'
+  push:
+    branches:
+      - develop
+    branches-ignore:
+      - 'version-bump/**'   # prevent infinite loops
+
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
-on:
-  pull_request:
-    types: [closed]
-    branches: [main]
+concurrency:
+  group: auto-version-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  create-version-bump:
-    if: github.event.pull_request.merged == true # only run if PR was merged
+  bump-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # needed for getting all tags
+          ref: develop
+          fetch-depth: 0
 
-      - name: Setup Git User
-        run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
-      # Determine version bump type using the payload (more robust than shell string checks)
-      - name: Determine version bump type
-        id: bump-type
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
-            let t = 'patch';
-            if (labels.includes('enhancement') || labels.includes('documentation')) {
-              t = 'minor';
-            } else if (labels.includes('bug')) {
-              t = 'patch';
-            } else {
-              t = 'patch';
-            }
-            core.setOutput('type', t);
-
-      # Create new branch for the bump
-      - name: Create version bump branch
-        id: create-branch
+      # --- Perform the version bump locally ---
+      - name: Bump version
+        id: bump
         run: |
-          BRANCH="version-bump/auto-${GITHUB_SHA::8}"
-          git checkout -b "$BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      # Bump version (no git commit/tag) and capture new version
-      - name: Update version
-        id: bump-version
-        run: |
-          npm --no-git-tag-version version "${{ steps.bump-type.outputs.type }}"
+          TYPE="${{ github.event.inputs.bump || 'patch' }}"
+          echo "Bumping version ($TYPE)..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version "$TYPE" -m "chore(version): bump %s [skip ci]"
           NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
-      # If there are no changes, skip creating a PR (avoid empty PRs)
-      - name: Check for changes
-        id: check-changes
+      # --- Push changes to a temporary version-bump branch ---
+      - name: Push version bump branch
         run: |
-          if git status --porcelain | grep -q .; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
+          BRANCH="version-bump/${{ github.run_id }}-${{ github.sha }}"
+          git push origin HEAD:"$BRANCH"
 
+      # --- Create the PR back into develop ---
       - name: Create Pull Request
-        if: steps.check-changes.outputs.changes == 'true'
-        id: create-pr
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: Bump version to ${{ steps.bump-version.outputs.version }}"
-          branch: ${{ steps.create-branch.outputs.branch }}
-          delete-branch: true
-          title: "chore: Bump version to ${{ steps.bump-version.outputs.version }}"
+          base: develop
+          branch: version-bump/${{ github.run_id }}-${{ github.sha }}
+          title: "chore(version): bump to v${{ steps.bump.outputs.new_version }}"
           body: |
-            🤖 Automatic version bump triggered by merge of #${{ github.event.pull_request.number }}
-            
-            **Changes:**
-            - Version: ${{ steps.bump-version.outputs.version }}
-            - Type: ${{ steps.bump-type.outputs.type }}
-            
-            This PR was automatically created by the Auto Version Bump workflow.
-          labels: |
-            automated
-            version-bump
-
-      # If there were no changes to commit, comment on the original PR and exit gracefully
-      - name: Comment on original PR (no bump needed)
-        if: steps.check-changes.outputs.changes == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const bumpType = '${{ steps.bump-type.outputs.type }}'
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `ℹ️ No version change was necessary (determined bump: ${bumpType}). No version bump PR was created.`
-            })
-
-      # Comment on the original PR with the version bump PR link (if created)
-      - name: Comment on Original PR
-        if: steps.check-changes.outputs.changes == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const newVersion = '${{ steps.bump-version.outputs.version }}'
-            const bumpType = '${{ steps.bump-type.outputs.type }}'
-            const prUrl = '${{ steps.create-pr.outputs.pull-request-url }}'
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `📦 Created version bump PR for \`${newVersion}\` (${bumpType} increment): ${prUrl}\n\nPlease review and merge the version bump PR to complete the release.`
-            })
+            Automated version bump to **v${{ steps.bump.outputs.new_version }}**
+            - Triggered by: ${{ github.actor }}
+            - Bump type: `${{ github.event.inputs.bump || 'patch' }}`
+          commit-message: "chore(version): bump to v${{ steps.bump.outputs.new_version }} [skip ci]"
+          labels: "auto,version-bump"
+          delete-branch: true
