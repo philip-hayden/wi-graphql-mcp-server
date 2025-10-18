@@ -1,49 +1,94 @@
 name: Release
+
 on:
   push:
     branches: [ develop ]
+
 permissions:
-  contents: write
+  contents: write      # push refs/tags, write changelog, etc.
+  pull-requests: write # open PR to main
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # full history for tags & commits
+
+      - name: Ensure tags are present
+        run: git fetch --tags --force
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       - run: npm ci
       - run: npm run build --if-present
-      - name: Install release tooling
+
+      # Capture the previous tag (if any) before running semantic-release
+      - name: Read previous tag
+        id: prev
         run: |
-          npm i -D semantic-release @semantic-release/git @semantic-release/github @semantic-release/changelog @semantic-release/npm @semantic-release/commit-analyzer @semantic-release/release-notes-generator
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          echo "prev_tag=$PREV" >> $GITHUB_OUTPUT
+
+      # Run semantic-release (transient install via npx so we don't mutate package-lock)
       - name: Semantic Release
         id: sr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
-      - name: Create/Update maintenance branch for this line
+        run: npx -y semantic-release
+
+      # Detect whether a new tag was published and expose it to later steps
+      - name: Detect published release
+        id: detect
         run: |
-          TAG=$(git describe --tags --abbrev=0)
+          NEW=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          echo "new_tag=$NEW" >> $GITHUB_OUTPUT
+          if [ -n "$NEW" ] && [ "$NEW" != "${{ steps.prev.outputs.prev_tag }}" ]; then
+            echo "RELEASE_PUBLISHED=1" >> $GITHUB_ENV
+            echo "RELEASE_TAG=$NEW" >> $GITHUB_ENV
+          else
+            echo "RELEASE_PUBLISHED=0" >> $GITHUB_ENV
+          fi
+
+      # Create or update the maintenance branch (e.g., releases/v1.7) at the new tag
+      - name: Create/Update maintenance branch for this line
+        if: env.RELEASE_PUBLISHED == '1'
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
           V=${TAG#v}
-          MAJOR=$(echo $V | cut -d. -f1)
-          MINOR=$(echo $V | cut -d. -f2)
+          MAJOR=$(echo "$V" | cut -d. -f1)
+          MINOR=$(echo "$V" | cut -d. -f2)
           LINE="releases/v${MAJOR}.${MINOR}"
           echo "Maint line: $LINE from tag $TAG"
-          if git show-ref --verify --quiet refs/heads/$LINE; then
-            git branch -f $LINE $TAG
+
+          if git show-ref --verify --quiet "refs/heads/$LINE"; then
+            git branch -f "$LINE" "$TAG"
           else
-            git branch $LINE $TAG
+            git branch "$LINE" "$TAG"
           fi
-          git push -u origin $LINE --force
-      - name: Advance main to released tag
-        run: |
-          TAG=$(git describe --tags --abbrev=0)
-          git checkout -B main $TAG
-          git push -u origin main --force
+          git push -u origin "$LINE" --force-with-lease
+
+      # Open a PR to bring the released changes from develop into main (works with protected main)
+      - name: Create PR to update main
+        if: env.RELEASE_PUBLISHED == '1'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: sync/release-${{ env.RELEASE_TAG }}         # unique head branch per release
+          title: "chore(release): sync develop → main – ${{ env.RELEASE_TAG }}"
+          body: |
+            Automated PR to bring latest release from **develop** into **main**.
+            - Release tag: **${{ env.RELEASE_TAG }}**
+            - Source branch: ${{ github.ref_name }}
+          labels: release
+          delete-branch: true

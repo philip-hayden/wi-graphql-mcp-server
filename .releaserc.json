@@ -1,8 +1,9 @@
 {
   "branches": [
     "develop",
-    { "name": "releases/v1.7", "range": "1.7.x", "channel": "1.7.x" }
+    { "name": "releases/v1.7", "range": "1.7.x" }
   ],
+  "tagFormat": "v${version}",
   "plugins": [
     ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
     ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
