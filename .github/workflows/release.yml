@@ -56,9 +56,16 @@ jobs:
           git push -u origin "$LINE" --force-with-lease
 
       # Optional: keep main pointing at the released tag (FF via ref update)
-      - name: Advance main to released tag
-        run: |
-          TAG=$(git describe --tags --abbrev=0)
-          # Push the tag's commit to refs/heads/main without checking out
-          SHA=$(git rev-list -n 1 "$TAG")
-          git push origin "$SHA":refs/heads/main --force-with-lease
+      - name: Create PR to update main
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: sync/develop-to-main
+          title: "chore(release): sync develop to main"
+          body: |
+            Automated PR to bring latest release from develop into main.
+            - Triggered by tag: ${{ steps.sr.outputs.new_release_version || 'manual release' }}
+            - Source: ${{ github.ref_name }}
+          labels: release
+          delete-branch: true
