@@ -5,7 +5,8 @@ on:
     branches: [ develop ]
 
 permissions:
-  contents: write   # needed for tags, releases, pushing refs
+  contents: write      # push refs/tags, write changelog, etc.
+  pull-requests: write # open PR to main
 
 concurrency:
   group: release-${{ github.ref }}
@@ -18,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0    # full history for semantic-release & tags
+          fetch-depth: 0   # full history for tags & commits
 
       - name: Ensure tags are present
         run: git fetch --tags --force
@@ -31,23 +32,44 @@ jobs:
       - run: npm ci
       - run: npm run build --if-present
 
-      # Invoke semantic-release without mutating package-lock.json
+      # Capture the previous tag (if any) before running semantic-release
+      - name: Read previous tag
+        id: prev
+        run: |
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          echo "prev_tag=$PREV" >> $GITHUB_OUTPUT
+
+      # Run semantic-release (transient install via npx so we don't mutate package-lock)
       - name: Semantic Release
         id: sr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx -y semantic-release
 
-      # Create or update maintenance branch for this minor line
-      - name: Create/Update maintenance branch for this line
+      # Detect whether a new tag was published and expose it to later steps
+      - name: Detect published release
+        id: detect
         run: |
-          TAG=$(git describe --tags --abbrev=0)
+          NEW=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          echo "new_tag=$NEW" >> $GITHUB_OUTPUT
+          if [ -n "$NEW" ] && [ "$NEW" != "${{ steps.prev.outputs.prev_tag }}" ]; then
+            echo "RELEASE_PUBLISHED=1" >> $GITHUB_ENV
+            echo "RELEASE_TAG=$NEW" >> $GITHUB_ENV
+          else
+            echo "RELEASE_PUBLISHED=0" >> $GITHUB_ENV
+          fi
+
+      # Create or update the maintenance branch (e.g., releases/v1.7) at the new tag
+      - name: Create/Update maintenance branch for this line
+        if: env.RELEASE_PUBLISHED == '1'
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
           V=${TAG#v}
           MAJOR=$(echo "$V" | cut -d. -f1)
           MINOR=$(echo "$V" | cut -d. -f2)
           LINE="releases/v${MAJOR}.${MINOR}"
           echo "Maint line: $LINE from tag $TAG"
-          # create or move branch to the tag (local), then push
+
           if git show-ref --verify --quiet "refs/heads/$LINE"; then
             git branch -f "$LINE" "$TAG"
           else
@@ -55,17 +77,18 @@ jobs:
           fi
           git push -u origin "$LINE" --force-with-lease
 
-      # Optional: keep main pointing at the released tag (FF via ref update)
+      # Open a PR to bring the released changes from develop into main (works with protected main)
       - name: Create PR to update main
+        if: env.RELEASE_PUBLISHED == '1'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
-          branch: sync/develop-to-main
-          title: "chore(release): sync develop to main"
+          branch: sync/release-${{ env.RELEASE_TAG }}         # unique head branch per release
+          title: "chore(release): sync develop → main – ${{ env.RELEASE_TAG }}"
           body: |
-            Automated PR to bring latest release from develop into main.
-            - Triggered by tag: ${{ steps.sr.outputs.new_release_version || 'manual release' }}
-            - Source: ${{ github.ref_name }}
+            Automated PR to bring latest release from **develop** into **main**.
+            - Release tag: **${{ env.RELEASE_TAG }}**
+            - Source branch: ${{ github.ref_name }}
           labels: release
           delete-branch: true
